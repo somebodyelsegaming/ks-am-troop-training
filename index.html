@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kingshot - Alliance Mobilization - Troop training &amp; promotion calculator</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6470;
+    --line: #d9dde3; --accent: #2563eb; --accent-soft: #e8efff; --warn: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111418; --card: #1a1f25; --text: #e6e9ed; --muted: #9aa4b0;
+      --line: #2c333c; --accent: #6b9bff; --accent-soft: #1c2a45; --warn: #f0a646;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: .9rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  label.task { display: block; font-weight: 600; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px 6px; text-align: left; }
+  th { font-size: .8rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line); }
+  td:first-child { font-weight: 600; text-transform: capitalize; }
+  select {
+    width: 100%; padding: 8px; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+  }
+  .result { background: var(--accent-soft); border-color: var(--accent); text-align: center; }
+  .result .big { font-size: 2.4rem; font-weight: 700; color: var(--accent); }
+  .result .msg { font-size: 1.1rem; font-weight: 600; color: var(--warn); }
+  .small { font-size: .85rem; color: var(--muted); }
+  details { margin-top: 8px; }
+  .data { overflow-x: auto; }
+  .data table { font-size: .8rem; min-width: 520px; }
+  .data td, .data th { text-align: right; padding: 4px; border-bottom: 1px solid var(--line); }
+  .data td:first-child, .data th:first-child { text-align: left; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Kingshot - Alliance Mobilization<br>Troop training &amp; promotion calculator</h1>
+  <p class="sub">How many troops to train or promote at each camp to finish a mobilization task. Based on TᗩᗰᗩGO's spreadsheet.</p>
+
+  <div class="card">
+    <label class="task" for="task">Select the task (points)</label>
+    <select id="task">
+      <option value="">— select —</option>
+      <option value="15000">15,000</option>
+      <option value="30000">30,000</option>
+      <option value="120000" selected>120,000</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>Troop</th><th>TrueGold</th><th>Level to train</th><th>Level before promotion</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="card result" id="result"></div>
+
+  <div class="card">
+    <details>
+      <summary>Points per troop table</summary>
+      <div class="data" id="datatable"></div>
+      <p class="small">Data source: <a href="https://docs.google.com/spreadsheets/d/1gWxfVCFR_iaYeUYY9mXurvXIFwqKXPG3qeuJFaSvjRk/edit?usp=sharing" target="_blank" rel="noopener">original data sheet</a>.
+      Formula: task ÷ (points of the 3 trained levels − points of the 3 starting levels for promotions).</p>
+    </details>
+  </div>
+</main>
+
+<script>
+  // Points per troop. Rows: TG0..TG10. Columns: troop level 1..11 (null = level not available).
+  const DATA = {
+    TG0:  [3, 4, 6,  9, 13, 20, 28, 38, 50,  66, null],
+    TG1:  [3, 4, 6, 10, 14, 21, 30, 41, 54,  71, null],
+    TG2:  [3, 4, 6, 10, 15, 22, 32, 44, 58,  76, null],
+    TG3:  [3, 4, 6, 11, 16, 24, 34, 47, 62,  83, null],
+    TG4:  [3, 4, 8, 12, 17, 26, 37, 51, 67,  88, null],
+    TG5:  [4, 5, 9, 13, 18, 28, 40, 54, 72,  94, 114],
+    TG6:  [4, 5, 9, 14, 19, 30, 43, 57, 77,  99, 120],
+    TG7:  [4, 5, 10, 15, 20, 32, 46, 60, 82, 104, 126],
+    TG8:  [5, 6, 11, 16, 21, 34, 49, 63, 87, 110, 135],
+    TG9:  [5, 6, 11, 16, 22, 35, 51, 66, 91, 115, 141],
+    TG10: [5, 6, 12, 17, 23, 37, 54, 69, 95, 121, 148],
+  };
+  const TROOPS = ["infantry", "cavalry", "archer"];
+  const LEVELS = Array.from({ length: 11 }, (_, i) => i + 1);
+
+  const opts = (vals, sel, blank) =>
+    (blank ? `<option value="">${blank}</option>` : "") +
+    vals.map(v => `<option value="${v}"${String(v) === String(sel) ? " selected" : ""}>${v}</option>`).join("");
+
+  document.getElementById("rows").innerHTML = TROOPS.map(t => `
+    <tr>
+      <td>${t}</td>
+      <td><select id="${t}-fc">${opts(Object.keys(DATA), "TG8", "—")}</select></td>
+      <td><select id="${t}-lvl">${opts(LEVELS, 10, "—")}</select></td>
+      <td><select id="${t}-from"><option value="none" selected>not promoted</option>${opts(LEVELS)}</select></td>
+    </tr>`).join("");
+
+  document.getElementById("datatable").innerHTML =
+    `<table><tr><th>TG</th>${LEVELS.map(l => `<th>${l}</th>`).join("")}</tr>` +
+    Object.entries(DATA).map(([fc, row]) =>
+      `<tr><td>${fc}</td>${row.map(v => `<td>${v ?? "-"}</td>`).join("")}</tr>`).join("") +
+    `</table>`;
+
+  const $ = id => document.getElementById(id).value;
+
+  function calc() {
+    const out = document.getElementById("result");
+    const msg = m => (out.innerHTML = `<div class="msg">${m}</div>`);
+    const task = Number($("task"));
+    if (!task) return msg("Select the task above");
+
+    let points = 0;
+    for (const t of TROOPS) {
+      const fc = $(`${t}-fc`), lvl = Number($(`${t}-lvl`)), from = $(`${t}-from`);
+      if (!fc) return msg(`Select the ${t} TrueGold level`);
+      if (!lvl) return msg(`Select the ${t} level to train`);
+      const gain = DATA[fc][lvl - 1];
+      if (gain == null) return msg(`Level ${lvl} ${t} is not available at ${fc}`);
+      const base = from === "none" ? 0 : DATA[fc][Number(from) - 1];
+      if (base == null) return msg(`Level ${from} ${t} is not available at ${fc}`);
+      if (from !== "none" && Number(from) >= lvl) return msg(`${t}: starting level must be below the level to train`);
+      points += gain - base;
+    }
+
+    const each = Math.ceil(task / points);
+    out.innerHTML = `
+      <div class="small">Number of troops training or promoting at each camp</div>
+      <div class="big">${each.toLocaleString()}</div>
+      <div class="small">${(each * 3).toLocaleString()} troops total (all 3 camps) earn ${(each * points).toLocaleString()} points. Task needs ${task.toLocaleString()}.</div>`;
+  }
+
+  document.querySelectorAll("select").forEach(s => s.addEventListener("change", calc));
+  calc();
+</script>
+</body>
+</html>
