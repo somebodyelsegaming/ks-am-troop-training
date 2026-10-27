@@ -46,8 +46,8 @@
   .data td, .data th { text-align: right; padding: 4px; border-bottom: 1px solid var(--line); }
   .data td:first-child, .data th:first-child { text-align: left; }
   a { color: var(--accent); }
-  label.same { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; cursor: pointer; }
-  label.same input { width: 18px; height: 18px; }
+  label.split { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 8px; cursor: pointer; }
+  label.split input { width: 18px; height: 18px; }
   tr[hidden] { display: none; }
 </style>
 </head>
@@ -67,7 +67,7 @@
   </div>
 
   <div class="card">
-    <label class="same"><input type="checkbox" id="same" checked> Same levels for all 3 troops</label>
+    <label class="split"><input type="checkbox" id="split"> Set each building and troop level separately</label>
     <table>
       <thead>
         <tr><th>Troop</th><th>TrueGold</th><th>Level to train</th><th>Level before promotion</th></tr>
@@ -110,7 +110,7 @@
     (blank ? `<option value="">${blank}</option>` : "") +
     vals.map(v => `<option value="${v}"${String(v) === String(sel) ? " selected" : ""}>${v}</option>`).join("");
 
-  // The "all" row drives all 3 troop rows while the "same levels" box is checked.
+  // The "all" row drives all 3 troop rows unless the "separately" box is checked.
   const FIELDS = ["fc", "lvl", "from"];
   document.getElementById("rows").innerHTML = ["all", ...TROOPS].map(t => `
     <tr id="${t}-row">
@@ -136,7 +136,7 @@
 
     let points = 0;
     for (const troop of TROOPS) {
-      const t = same.checked ? "troop" : troop;
+      const t = split.checked ? troop : "troop";
       const fc = $(`${troop}-fc`), lvl = Number($(`${troop}-lvl`)), from = $(`${troop}-from`);
       if (!fc) return msg(`Select the ${t} TrueGold level`);
       if (!lvl) return msg(`Select the ${t} level to train`);
@@ -155,25 +155,25 @@
       <div class="small">${(each * 3).toLocaleString()} troops total (all 3 camps) earn ${(each * points).toLocaleString()} points. Task needs ${task.toLocaleString()}.</div>`;
   }
 
-  const same = document.getElementById("same");
+  const split = document.getElementById("split");
   const syncFromAll = () => TROOPS.forEach(t => FIELDS.forEach(f =>
     (document.getElementById(`${t}-${f}`).value = $(`all-${f}`))));
 
   function setMode() {
-    if (same.checked) {
+    if (!split.checked) {
       FIELDS.forEach(f => (document.getElementById(`all-${f}`).value = $(`infantry-${f}`)));
       syncFromAll();
     }
-    document.getElementById("all-row").hidden = !same.checked;
-    TROOPS.forEach(t => (document.getElementById(`${t}-row`).hidden = same.checked));
+    document.getElementById("all-row").hidden = split.checked;
+    TROOPS.forEach(t => (document.getElementById(`${t}-row`).hidden = !split.checked));
     calc();
   }
 
   document.querySelectorAll("select").forEach(s => s.addEventListener("change", () => {
-    if (same.checked) syncFromAll();
+    if (!split.checked) syncFromAll();
     calc();
   }));
-  same.addEventListener("change", setMode);
+  split.addEventListener("change", setMode);
   setMode();
 </script>
 </body>
