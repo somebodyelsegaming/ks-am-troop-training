@@ -4,6 +4,9 @@ Pick an Alliance Mobilization task (15,000, 30,000 or 120,000 points), then
 the TrueGold level, the level to train and the level before promotion for each
 troop type. The page shows how many troops to train or promote at each camp.
 
+The "Same levels for all 3 troops" box (on by default) shows one row that sets
+all three troops at once. Uncheck it to set each troop on its own row.
+
 ## Running it
 
 Live at **https://somebodyelsegaming.github.io/ks-am-troop-training/**
